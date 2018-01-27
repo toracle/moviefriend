@@ -1,47 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import (absolute_import, division, print_function)
-
 import json
 from bothub_client.bot import BaseBot
 from bothub_client.messages import Message
+from bothub_client.decorators import command
 from .movies import BoxOffice
 from .movies import LotteCinema
 
 
 class Bot(BaseBot):
-    """Represent a Bot logic which interacts with a user.
-
-    BaseBot superclass have methods belows:
-
-    * Send message
-      * self.send_message(message, user_id=None, channel=None)
-    * Data Storage
-      * self.set_project_data(data)
-      * self.get_project_data()
-      * self.set_user_data(data, user_id=None, channel=None)
-      * self.get_user_data(user_id=None, channel=None)
-
-    When you omit user_id and channel argument, it regarded as a user
-    who triggered a bot.
-    """
-
-    def handle_message(self, event, context):
-        """I have two arguments.
-
-        event is a dict and contains trigger info.
-
-        {
-           "trigger": "webhook",
-           "channel": "<name>",
-           "sender": {
-              "id": "<chat_id>",
-              "name": "<nickname>"
-           },
-           "content": "<message content>",
-           "raw_data": <data itself webhook receives>
-        }
-        """
+    def on_default(self, event, context):
         message = event.get('content')
         location = event.get('location')
 
@@ -49,19 +17,10 @@ class Bot(BaseBot):
             self.send_nearest_theaters(location['latitude'], location['longitude'], event)
             return
 
-        if message == '영화순위':
-            self.send_box_office(event)
-        elif message == '근처 상영관 찾기':
-            self.send_search_theater_message(event)
-        elif message.startswith('/schedule'):
-            _, theater_id, theater_name = message.split(maxsplit=2)
-            self.send_theater_schedule(theater_id, theater_name, event)
-        elif message == '/start':
-            self.send_welcome_message(event)
-        else:
-            self.send_error_message(event)
+        self.send_error_message(event)
 
-    def send_box_office(self, event):
+    @command('boxoffice')
+    def send_box_office(self, event, context, args):
         data = self.get_project_data()
         api_key = data.get('box_office_api_key')
         box_office = BoxOffice(api_key)
@@ -70,11 +29,12 @@ class Bot(BaseBot):
         response = '요즘 볼만한 영화들의 순위입니다\n{}'.format(rank_message)
 
         message = Message(event).set_text(response)\
-                                .add_quick_reply('영화순위')\
-                                .add_quick_reply('근처 상영관 찾기')
+                                .add_quick_reply('영화순위', '/boxoffice')\
+                                .add_quick_reply('근처 상영관 찾기', '/find')
         self.send_message(message)
 
-    def send_search_theater_message(self, event):
+    @command('find')
+    def send_search_theater_message(self, event, context, args):
         message = Message(event).set_text('현재 계신 위치를 알려주세요')\
                                 .add_location_request('위치 전송하기')
         self.send_message(message)
@@ -94,7 +54,11 @@ class Bot(BaseBot):
         message.add_quick_reply('영화순위')
         self.send_message(message)
 
-    def send_theater_schedule(self, theater_id, theater_name, event):
+    @command('schedule')
+    def send_theater_schedule(self, event, context, args):
+        theater_id = args[0]
+        theater_name = ' '.join(args[1:])
+
         c = LotteCinema()
         movie_id_to_info = c.get_movie_list(theater_id)
 
@@ -105,17 +69,18 @@ class Bot(BaseBot):
             movie_schedules.append('* {}\n  {}'.format(info['Name'], ' '.join([schedule['StartTime'] for schedule in info['Schedules']])))
 
         message = Message(event).set_text(text + '\n'.join(movie_schedules))\
-                                .add_quick_reply('영화순위')\
-                                .add_quick_reply('근처 상영관 찾기')
+                                .add_quick_reply('영화순위', '/boxoffice')\
+                                .add_quick_reply('근처 상영관 찾기', '/find')
         self.send_message(message)
 
-    def send_welcome_message(self, event):
+    @command('start')
+    def send_welcome_message(self, event, context, args):
         message = Message(event).set_text('반가워요.\n\n'\
                                           '저는 요즘 볼만한 영화들을 알려드리고, '\
                                           '현재 계신 곳에서 가까운 영화관들의 상영시간표를 알려드려요.\n\n'
                                           "'영화순위'나 '근처 상영관 찾기'를 입력해보세요.")\
-                                .add_quick_reply('영화순위')\
-                                .add_quick_reply('근처 상영관 찾기')
+                                .add_quick_reply('영화순위', '/boxoffice')\
+                                .add_quick_reply('근처 상영관 찾기', '/find')
         self.send_message(message)
 
     def send_error_message(self, event):
@@ -123,6 +88,6 @@ class Bot(BaseBot):
                                           '저는 요즘 볼만한 영화들을 알려드리고, '\
                                           '현재 계신 곳에서 가까운 영화관들의 상영시간표를 알려드려요.\n\n'
                                           "'영화순위'나 '근처 상영관 찾기'를 입력해보세요.")\
-                                .add_quick_reply('영화순위')\
-                                .add_quick_reply('근처 상영관 찾기')
+                                .add_quick_reply('영화순위', '/boxoffice')\
+                                .add_quick_reply('근처 상영관 찾기', '/find')
         self.send_message(message)
