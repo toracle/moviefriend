@@ -33,7 +33,8 @@ class BoxOffice(object):
 
 
 class LotteCinema(object):
-    base_url = 'http://www.lottecinema.co.kr'
+    # base_url = 'http://www.lottecinema.co.kr'
+    base_url = 'http://moviefriend.cafe24.com'
     base_url_cinema_data = '{}/LCWS/Cinema/CinemaData.aspx'.format(base_url)
     base_url_movie_list = '{}/LCWS/Ticketing/TicketingData.aspx'.format(base_url)
 
